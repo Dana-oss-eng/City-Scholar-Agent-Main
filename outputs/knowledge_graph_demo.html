@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>城市韧性与安全治理 — 知识图谱 — 知识图谱</title>
+<script src="https://unpkg.com/vis-network@9.1.6/dist/vis-network.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; background: #f5f7fa; }
+  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header .stats { font-size: 13px; opacity: 0.85; }
+  .container { display: flex; height: calc(100vh - 80px); }
+  #graph { flex: 1; background: white; }
+  .sidebar { width: 280px; background: white; border-left: 1px solid #e0e4e8; padding: 16px; overflow-y: auto; font-size: 13px; }
+  .sidebar h3 { font-size: 15px; margin-bottom: 12px; color: #1a1a2e; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .search-box { width: 100%; padding: 8px 12px; border: 1px solid #d0d5dd; border-radius: 6px; font-size: 13px; margin-bottom: 12px; outline: none; }
+  .search-box:focus { border-color: #4A90D9; box-shadow: 0 0 0 3px rgba(74,144,217,0.15); }
+  .node-list { list-style: none; }
+  .node-list li { padding: 6px 8px; cursor: pointer; border-radius: 4px; margin-bottom: 2px; transition: background 0.15s; }
+  .node-list li:hover { background: #f0f4ff; }
+  .node-list li .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .toolbar { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .toolbar button { padding: 6px 12px; border: 1px solid #d0d5dd; border-radius: 6px; background: white; cursor: pointer; font-size: 12px; transition: all 0.15s; }
+  .toolbar button:hover { background: #f0f4ff; border-color: #4A90D9; }
+  .toolbar button.active { background: #4A90D9; color: white; border-color: #4A90D9; }
+  #detail-panel { margin-top: 12px; padding: 10px; background: #f8f9fb; border-radius: 6px; font-size: 12px; display: none; }
+  #detail-panel h4 { margin-bottom: 6px; color: #1a1a2e; }
+  #detail-panel p { color: #555; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>📊 城市韧性与安全治理 — 知识图谱 — 知识图谱</h1>
+    <div class="stats">节点: 21 &nbsp;|&nbsp; 边: 39 &nbsp;|&nbsp; 论文: 3</div>
+  </div>
+  <div class="toolbar" id="toolbar">
+    <button onclick="resetView()" title="重置视图">🔄 重置</button>
+    <button onclick="togglePhysics()" title="暂停/恢复布局动画">⏯️ 物理引擎</button>
+    <button onclick="exportPNG()" title="导出为 PNG 图片">📸 截图</button>
+    <button onclick="fitAll()" title="适应窗口">🔍 全部显示</button>
+  </div>
+</div>
+<div class="container">
+  <div id="graph"></div>
+  <div class="sidebar">
+    <h3>📋 图例</h3>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:#4A90D9"></span>论文</div>
+<div class="legend-item"><span class="legend-dot" style="background:#E87332"></span>共同主题</div>
+<div class="legend-item"><span class="legend-dot" style="background:#50B86C"></span>研究方法</div>
+<div class="legend-item"><span class="legend-dot" style="background:#9B59B6"></span>数据来源</div>
+<div class="legend-item"><span class="legend-dot" style="background:#F1C40F"></span>研究发现</div>
+<div class="legend-item"><span class="legend-dot" style="background:#E74C3C"></span>综合启示</div>
+<div class="legend-item"><span class="legend-dot" style="background:#1ABC9C"></span>提纲章节</div>
+    </div>
+    <h3>🔍 搜索节点</h3>
+    <input type="text" class="search-box" id="search" placeholder="输入节点名称筛选…" oninput="filterNodes()">
+    <ul class="node-list" id="node-list"></ul>
+    <div id="detail-panel">
+      <h4 id="detail-title"></h4>
+      <p id="detail-content"></p>
+    </div>
+  </div>
+</div>
+<script>
+  var nodes = new vis.DataSet([{"id": "paper_a_pdf", "label": "paper_a", "group": "paper", "color": {"background": "#4A90D9", "border": "#3b73ad", "highlight": {"background": "#4A90D9", "border": "#3b73ad"}}, "size": 32, "font": {"size": 14, "bold": true}, "metadata": {"file_name": "paper_a.pdf", "research_question": "城市韧性如何评估？", "research_object": "沿海城市群"}}, {"id": "paper_b_pdf", "label": "paper_b", "group": "paper", "color": {"background": "#4A90D9", "border": "#3b73ad", "highlight": {"background": "#4A90D9", "border": "#3b73ad"}}, "size": 32, "font": {"size": 14, "bold": true}, "metadata": {"file_name": "paper_b.pdf", "research_question": "城市安全治理如何影响韧性？", "research_object": "内陆都市圈"}}, {"id": "paper_c_pdf", "label": "paper_c", "group": "paper", "color": {"background": "#4A90D9", "border": "#3b73ad", "highlight": {"background": "#4A90D9", "border": "#3b73ad"}}, "size": 32, "font": {"size": 14, "bold": true}, "metadata": {"file_name": "paper_c.pdf", "research_question": "数字化如何提升城市韧性？", "research_object": "智慧城市试点区域"}}, {"id": "theme_0", "label": "多篇论文都涉及「城市韧性」相关议题。", "group": "theme", "color": {"background": "#E87332", "border": "#b95c28", "highlight": {"background": "#E87332", "border": "#b95c28"}}, "size": 22, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "theme_1", "label": "多篇论文都涉及「治理协同」相关议题。", "group": "theme", "color": {"background": "#E87332", "border": "#b95c28", "highlight": {"background": "#E87332", "border": "#b95c28"}}, "size": 22, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "theme_2", "label": "多篇论文都涉及「数据分析方法」相关议题。", "group": "theme", "color": {"background": "#E87332", "border": "#b95c28", "highlight": {"background": "#E87332", "border": "#b95c28"}}, "size": 22, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "method_0", "label": "指标评价与空间分析方法", "group": "method", "color": {"background": "#50B86C", "border": "#409356", "highlight": {"background": "#50B86C", "border": "#409356"}}, "size": 18, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "method_1", "label": "问卷调查与回归分析方法", "group": "method", "color": {"background": "#50B86C", "border": "#409356", "highlight": {"background": "#50B86C", "border": "#409356"}}, "size": 18, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "method_2", "label": "数字孪生建模与仿真分析", "group": "method", "color": {"background": "#50B86C", "border": "#409356", "highlight": {"background": "#50B86C", "border": "#409356"}}, "size": 18, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "data_0", "label": "统计年鉴和遥感数据", "group": "data", "color": {"background": "#9B59B6", "border": "#7c4791", "highlight": {"background": "#9B59B6", "border": "#7c4791"}}, "size": 18, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "data_1", "label": "问卷、POI 数据与统计资料", "group": "data", "color": {"background": "#9B59B6", "border": "#7c4791", "highlight": {"background": "#9B59B6", "border": "#7c4791"}}, "size": 18, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "data_2", "label": "IoT 传感器和城市大数据平台", "group": "data", "color": {"background": "#9B59B6", "border": "#7c4791", "highlight": {"background": "#9B59B6", "border": "#7c4791"}}, "size": 18, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "finding_0", "label": "基础设施韧性与治理协同能力显著相关", "group": "finding", "color": {"background": "#F1C40F", "border": "#c09c0c", "highlight": {"background": "#F1C40F", "border": "#c09c0c"}}, "size": 18, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "finding_1", "label": "公共服务可达性影响城市安全感知", "group": "finding", "color": {"background": "#F1C40F", "border": "#c09c0c", "highlight": {"background": "#F1C40F", "border": "#c09c0c"}}, "size": 18, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "finding_2", "label": "数字孪生显著提升应急响应效率", "group": "finding", "color": {"background": "#F1C40F", "border": "#c09c0c", "highlight": {"background": "#F1C40F", "border": "#c09c0c"}}, "size": 18, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "implication_0", "label": "提升跨区域协同治理能力", "group": "implication", "color": {"background": "#E74C3C", "border": "#b83c30", "highlight": {"background": "#E74C3C", "border": "#b83c30"}}, "size": 16, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "implication_1", "label": "公共服务规划与安全治理协同", "group": "implication", "color": {"background": "#E74C3C", "border": "#b83c30", "highlight": {"background": "#E74C3C", "border": "#b83c30"}}, "size": 16, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "implication_2", "label": "加速城市数字化转型与韧性建设融合", "group": "implication", "color": {"background": "#E74C3C", "border": "#b83c30", "highlight": {"background": "#E74C3C", "border": "#b83c30"}}, "size": 16, "font": {"size": 12, "bold": false}, "metadata": {}}, {"id": "section_0", "label": "研究背景与问题提出", "group": "section", "color": {"background": "#1ABC9C", "border": "#14967c", "highlight": {"background": "#1ABC9C", "border": "#14967c"}}, "size": 20, "font": {"size": 12, "bold": false}, "metadata": {"bullets": ["城市韧性研究缘起", "安全治理现实需求"]}}, {"id": "section_1", "label": "常用方法与数据来源", "group": "section", "color": {"background": "#1ABC9C", "border": "#14967c", "highlight": {"background": "#1ABC9C", "border": "#14967c"}}, "size": 20, "font": {"size": 12, "bold": false}, "metadata": {"bullets": ["指标评价法", "问卷回归法", "数字孪生法"]}}, {"id": "section_2", "label": "主要发现与启示", "group": "section", "color": {"background": "#1ABC9C", "border": "#14967c", "highlight": {"background": "#1ABC9C", "border": "#14967c"}}, "size": 20, "font": {"size": 12, "bold": false}, "metadata": {"bullets": ["韧性与治理协同", "公共服务可达性", "数字化转型"]}}]);
+  var edges = new vis.DataSet([{"from": "paper_a_pdf", "to": "theme_0", "label": "涉及", "width": 2, "title": "涉及 (权重: 0.60)"}, {"from": "paper_b_pdf", "to": "theme_0", "label": "涉及", "width": 2, "title": "涉及 (权重: 0.60)"}, {"from": "paper_c_pdf", "to": "theme_0", "label": "涉及", "width": 2, "title": "涉及 (权重: 0.60)"}, {"from": "paper_a_pdf", "to": "theme_1", "label": "涉及", "width": 2, "title": "涉及 (权重: 0.60)"}, {"from": "paper_b_pdf", "to": "theme_1", "label": "涉及", "width": 2, "title": "涉及 (权重: 0.60)"}, {"from": "paper_c_pdf", "to": "theme_1", "label": "涉及", "width": 2, "title": "涉及 (权重: 0.60)"}, {"from": "paper_a_pdf", "to": "theme_2", "label": "涉及", "width": 2, "title": "涉及 (权重: 0.60)"}, {"from": "paper_b_pdf", "to": "theme_2", "label": "涉及", "width": 2, "title": "涉及 (权重: 0.60)"}, {"from": "paper_c_pdf", "to": "theme_2", "label": "涉及", "width": 2, "title": "涉及 (权重: 0.60)"}, {"from": "paper_a_pdf", "to": "method_0", "label": "使用", "width": 2.5, "title": "使用 (权重: 0.70)"}, {"from": "paper_b_pdf", "to": "method_1", "label": "使用", "width": 2.5, "title": "使用 (权重: 0.70)"}, {"from": "paper_c_pdf", "to": "method_2", "label": "使用", "width": 2.5, "title": "使用 (权重: 0.70)"}, {"from": "paper_a_pdf", "to": "data_0", "label": "基于", "width": 2.5, "title": "基于 (权重: 0.70)"}, {"from": "paper_b_pdf", "to": "data_1", "label": "基于", "width": 2.5, "title": "基于 (权重: 0.70)"}, {"from": "paper_c_pdf", "to": "data_2", "label": "基于", "width": 2.5, "title": "基于 (权重: 0.70)"}, {"from": "paper_a_pdf", "to": "finding_0", "label": "得出", "width": 3, "title": "得出 (权重: 0.80)"}, {"from": "paper_b_pdf", "to": "finding_1", "label": "得出", "width": 3, "title": "得出 (权重: 0.80)"}, {"from": "paper_c_pdf", "to": "finding_2", "label": "得出", "width": 3, "title": "得出 (权重: 0.80)"}, {"from": "paper_a_pdf", "to": "implication_0", "label": "启示", "width": 1.5, "title": "启示 (权重: 0.50)"}, {"from": "paper_b_pdf", "to": "implication_0", "label": "启示", "width": 1.5, "title": "启示 (权重: 0.50)"}, {"from": "paper_c_pdf", "to": "implication_0", "label": "启示", "width": 1.5, "title": "启示 (权重: 0.50)"}, {"from": "paper_a_pdf", "to": "implication_1", "label": "启示", "width": 1.5, "title": "启示 (权重: 0.50)"}, {"from": "paper_b_pdf", "to": "implication_1", "label": "启示", "width": 1.5, "title": "启示 (权重: 0.50)"}, {"from": "paper_c_pdf", "to": "implication_1", "label": "启示", "width": 1.5, "title": "启示 (权重: 0.50)"}, {"from": "paper_a_pdf", "to": "implication_2", "label": "启示", "width": 1.5, "title": "启示 (权重: 0.50)"}, {"from": "paper_b_pdf", "to": "implication_2", "label": "启示", "width": 1.5, "title": "启示 (权重: 0.50)"}, {"from": "paper_c_pdf", "to": "implication_2", "label": "启示", "width": 1.5, "title": "启示 (权重: 0.50)"}, {"from": "section_0", "to": "paper_a_pdf", "label": "参考", "width": 1, "title": "参考 (权重: 0.40)"}, {"from": "section_0", "to": "paper_b_pdf", "label": "参考", "width": 1, "title": "参考 (权重: 0.40)"}, {"from": "section_0", "to": "paper_c_pdf", "label": "参考", "width": 1, "title": "参考 (权重: 0.40)"}, {"from": "section_1", "to": "paper_a_pdf", "label": "参考", "width": 1, "title": "参考 (权重: 0.40)"}, {"from": "section_1", "to": "paper_b_pdf", "label": "参考", "width": 1, "title": "参考 (权重: 0.40)"}, {"from": "section_1", "to": "paper_c_pdf", "label": "参考", "width": 1, "title": "参考 (权重: 0.40)"}, {"from": "section_2", "to": "paper_a_pdf", "label": "参考", "width": 1, "title": "参考 (权重: 0.40)"}, {"from": "section_2", "to": "paper_b_pdf", "label": "参考", "width": 1, "title": "参考 (权重: 0.40)"}, {"from": "section_2", "to": "paper_c_pdf", "label": "参考", "width": 1, "title": "参考 (权重: 0.40)"}, {"from": "paper_a_pdf", "to": "paper_b_pdf", "label": "同主题", "width": 0.5, "title": "同主题 (权重: 0.30)"}, {"from": "paper_a_pdf", "to": "paper_c_pdf", "label": "同主题", "width": 0.5, "title": "同主题 (权重: 0.30)"}, {"from": "paper_b_pdf", "to": "paper_c_pdf", "label": "同主题", "width": 0.5, "title": "同主题 (权重: 0.30)"}]);
+
+  var container = document.getElementById('graph');
+  var data = { nodes: nodes, edges: edges };
+  var options = {
+    nodes: {
+      shape: 'dot',
+      font: { size: 13, face: 'Microsoft YaHei, sans-serif', color: '#333' },
+      borderWidth: 2,
+      shadow: { enabled: true, size: 8 },
+    },
+    edges: {
+      font: { size: 10, face: 'Microsoft YaHei, sans-serif', color: '#999', strokeWidth: 0 },
+      arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+      smooth: { type: 'continuous' },
+      color: { opacity: 0.45 },
+    },
+    physics: {
+      solver: 'forceAtlas2Based',
+      forceAtlas2Based: {
+        gravitationalConstant: -40,
+        centralGravity: 0.005,
+        springLength: 180,
+        springConstant: 0.08,
+        damping: 0.4,
+      },
+      stabilization: { iterations: 200 },
+    },
+    interaction: {
+      hover: true,
+      tooltipDelay: 150,
+      zoomView: true,
+      dragView: true,
+      navigationButtons: true,
+    },
+    layout: { improvedLayout: true },
+  };
+  var network = new vis.Network(container, data, options);
+
+  // 节点点击：高亮邻居并显示详情
+  network.on('click', function(params) {
+    if (params.nodes.length > 0) {
+      var nodeId = params.nodes[0];
+      var node = nodes.get(nodeId);
+      var connected = network.getConnectedNodes(nodeId);
+      var allNodes = nodes.get();
+      allNodes.forEach(function(n) {
+        nodes.update({ id: n.id, opacity: (n.id === nodeId || connected.includes(n.id)) ? 1.0 : 0.2 });
+      });
+      var panel = document.getElementById('detail-panel');
+      document.getElementById('detail-title').textContent = node.label;
+      var meta = node.metadata || {};
+      var info = [];
+      if (meta.file_name) info.push('文件: ' + meta.file_name);
+      if (meta.research_question && meta.research_question !== 'undefined') info.push('研究问题: ' + meta.research_question);
+      if (meta.research_object && meta.research_object !== 'undefined') info.push('研究对象: ' + meta.research_object);
+      if (meta.bullets && meta.bullets.length) info.push('要点: ' + meta.bullets.slice(0, 3).join('; '));
+      document.getElementById('detail-content').textContent = info.join('\n') || '无额外信息';
+      panel.style.display = 'block';
+    } else {
+      resetHighlight();
+    }
+  });
+
+  // 双击重置高亮
+  network.on('doubleClick', resetHighlight);
+
+  function resetHighlight() {
+    nodes.forEach(function(n) { nodes.update({ id: n.id, opacity: 1.0 }); });
+    document.getElementById('detail-panel').style.display = 'none';
+  }
+
+  // 搜索过滤
+  function filterNodes() {
+    var q = document.getElementById('search').value.toLowerCase();
+    var list = document.getElementById('node-list');
+    var allNodes = nodes.get();
+    list.innerHTML = '';
+    allNodes.forEach(function(n) {
+      if (n.label && n.label.toLowerCase().includes(q)) {
+        var li = document.createElement('li');
+        li.innerHTML = '<span class="dot" style="background:' + (n.color && n.color.background ? n.color.background : '#999') + '"></span>' + n.label;
+        li.onclick = function() { network.focus(n.id, { scale: 1.5, animation: true }); network.selectNodes([n.id]); };
+        list.appendChild(li);
+      }
+    });
+  }
+
+  // 初始化节点列表
+  filterNodes();
+
+  // 工具栏功能
+  var physicsOn = true;
+  function togglePhysics() {
+    physicsOn = !physicsOn;
+    network.setOptions({ physics: physicsOn });
+    var btn = document.querySelectorAll('#toolbar button')[1];
+    btn.textContent = physicsOn ? '⏯️ 物理引擎' : '▶️ 启动布局';
+    btn.classList.toggle('active', !physicsOn);
+  }
+
+  function resetView() {
+    resetHighlight();
+    network.fit({ animation: true });
+    if (!physicsOn) togglePhysics();
+  }
+
+  function fitAll() {
+    network.fit({ animation: { duration: 600 } });
+  }
+
+  function exportPNG() {
+    var canvas = document.querySelector('#graph canvas');
+    if (canvas) {
+      var link = document.createElement('a');
+      link.download = '城市韧性与安全治理_知识图谱_知识图谱.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } else {
+      alert('无法获取画布，请稍后重试。');
+    }
+  }
+
+  // 响应式
+  window.addEventListener('resize', function() { network.fit(); });
+
+  // 加载完成
+  network.once('stabilizationIterationsDone', function() {
+    network.fit({ animation: true });
+  });
+</script>
+</body>
+</html>
