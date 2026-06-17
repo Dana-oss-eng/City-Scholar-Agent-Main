@@ -1,0 +1,25 @@
+# CityScholar-Agent v2.1 依赖
+# ==============================
+
+# === 必选依赖 ===
+
+# PDF 文本解析
+pypdf>=5.1.0,<6.0.0
+
+# === 可选依赖 ===
+
+# 更好的 PDF 表格提取与版面分析
+# pdfplumber>=0.11.0
+# PyMuPDF>=1.24.0
+
+# OCR（扫描版 PDF）
+# pytesseract>=0.3.10
+# pdf2image>=1.17.0
+
+# 知识图谱静态 PNG 导出（交互式 HTML 图谱无需额外依赖）
+# matplotlib>=3.8.0
+# networkx>=3.2.0
+
+# 注意：
+# - 交互式知识图谱 HTML 导出使用浏览器端 vis.js（CDN 加载），无需安装额外 Python 包。
+# - 如需导出静态 PNG 图片，请取消上方 matplotlib 和 networkx 的注释并安装。
