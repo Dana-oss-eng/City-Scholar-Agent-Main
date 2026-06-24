@@ -1,0 +1,3 @@
+# 此文件用于保留 raw_papers/ 目录结构
+# 请将你的 PDF 论文文件放入此目录
+# PDF 文件不会被 Git 追踪（见 .gitignore）
